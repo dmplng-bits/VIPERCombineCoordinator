@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIPER-Combine App Launch Flow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e1e4e8;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #58a6ff, #bc8cff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #8b949e;
+    font-size: 0.95rem;
+    margin-bottom: 48px;
+  }
+
+  /* ── Phase headers ── */
+  .phase {
+    margin-bottom: 56px;
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUp 0.6s forwards;
+  }
+  .phase:nth-child(2) { animation-delay: 0.3s; }
+  .phase:nth-child(3) { animation-delay: 1.8s; }
+  .phase:nth-child(4) { animation-delay: 3.6s; }
+  .phase:nth-child(5) { animation-delay: 5.6s; }
+
+  @keyframes fadeInUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .phase-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #58a6ff;
+    margin-bottom: 16px;
+  }
+
+  .phase-label .num {
+    background: #58a6ff;
+    color: #0f1117;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+  }
+
+  .phase-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+
+  /* ── Diagram canvas ── */
+  .diagram {
+    position: relative;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 16px;
+    padding: 40px 32px;
+    overflow: hidden;
+  }
+
+  .diagram::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(88,166,255,0.04), transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── Boxes ── */
+  .box {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 22px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    z-index: 2;
+    transition: box-shadow 0.3s;
+  }
+
+  .box .label { font-size: 0.65rem; font-weight: 400; opacity: 0.6; margin-top: 4px; }
+
+  .box-blue   { background: #1a2332; border: 1.5px solid #2d5a8e; color: #79c0ff; }
+  .box-purple { background: #221a33; border: 1.5px solid #6e40aa; color: #bc8cff; }
+  .box-green  { background: #1a2b1f; border: 1.5px solid #2ea043; color: #7ee787; }
+  .box-orange { background: #2b2215; border: 1.5px solid #d29922; color: #e3b341; }
+  .box-pink   { background: #2b1a22; border: 1.5px solid #db61a2; color: #f778ba; }
+  .box-gray   { background: #1c2028; border: 1.5px solid #484f58; color: #8b949e; }
+
+  /* ── Flow rows ── */
+  .flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+
+  /* ── Animated arrows ── */
+  .arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    position: relative;
+    min-width: 70px;
+    height: 30px;
+  }
+
+  .arrow-line {
+    flex: 1;
+    height: 2px;
+    background: #30363d;
+    position: relative;
+    overflow: hidden;
+    border-radius: 1px;
+  }
+
+  .arrow-line::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, #58a6ff, transparent);
+    animation: flowPulse 2.5s ease-in-out infinite;
+  }
+
+  .arrow-head {
+    width: 0;
+    height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 8px solid #58a6ff;
+    flex-shrink: 0;
+    animation: arrowGlow 2.5s ease-in-out infinite;
+  }
+
+  .arrow-text {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6rem;
+    color: #8b949e;
+    white-space: nowrap;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  @keyframes flowPulse {
+    0%   { left: -100%; }
+    50%  { left: 100%; }
+    100% { left: 100%; }
+  }
+
+  @keyframes arrowGlow {
+    0%, 100% { opacity: 0.5; }
+    25%      { opacity: 1; }
+  }
+
+  /* ── Vertical arrows ── */
+  .arrow-down {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 0;
+    height: 50px;
+    position: relative;
+  }
+
+  .arrow-down .arrow-line-v {
+    width: 2px;
+    flex: 1;
+    background: #30363d;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .arrow-down .arrow-line-v::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, #58a6ff, transparent);
+    animation: flowPulseV 2.5s ease-in-out infinite;
+  }
+
+  .arrow-down .arrow-head-v {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #58a6ff;
+    flex-shrink: 0;
+    animation: arrowGlow 2.5s ease-in-out infinite;
+  }
+
+  .arrow-down .arrow-text-v {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.6rem;
+    color: #8b949e;
+    white-space: nowrap;
+  }
+
+  @keyframes flowPulseV {
+    0%   { top: -100%; }
+    50%  { top: 100%; }
+    100% { top: 100%; }
+  }
+
+  /* ── Data packet animation ── */
+  .packet-track {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 70px;
+    padding: 0 6px;
+  }
+
+  .packet-track .track {
+    flex: 1;
+    height: 2px;
+    background: #30363d;
+    position: relative;
+    border-radius: 1px;
+  }
+
+  .packet {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+    animation: packetMove 2s ease-in-out infinite;
+    z-index: 3;
+  }
+
+  .packet-blue   { background: #58a6ff; box-shadow: 0 0 12px rgba(88,166,255,0.6); }
+  .packet-green  { background: #7ee787; box-shadow: 0 0 12px rgba(126,231,135,0.6); }
+  .packet-purple { background: #bc8cff; box-shadow: 0 0 12px rgba(188,140,255,0.6); }
+  .packet-orange { background: #e3b341; box-shadow: 0 0 12px rgba(227,179,65,0.6); }
+
+  @keyframes packetMove {
+    0%   { left: 0; opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { left: calc(100% - 10px); opacity: 0; }
+  }
+
+  /* ── Assembly exploded view ── */
+  .assembly-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .assembly-item {
+    padding: 16px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    opacity: 0;
+    animation: assemblyPop 0.4s forwards;
+  }
+  .assembly-item:nth-child(1) { animation-delay: 0.0s; }
+  .assembly-item:nth-child(2) { animation-delay: 0.2s; }
+  .assembly-item:nth-child(3) { animation-delay: 0.4s; }
+  .assembly-item:nth-child(4) { animation-delay: 0.6s; }
+  .assembly-item:nth-child(5) { animation-delay: 0.8s; }
+  .assembly-item:nth-child(6) { animation-delay: 1.0s; }
+
+  @keyframes assemblyPop {
+    0%   { opacity: 0; transform: scale(0.7); }
+    70%  { transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .assembly-order {
+    font-size: 0.6rem;
+    font-weight: 400;
+    opacity: 0.5;
+    display: block;
+    margin-top: 4px;
+  }
+
+  /* ── Sequence timeline ── */
+  .timeline {
+    position: relative;
+    padding-left: 36px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #30363d;
+  }
+
+  .timeline-item {
+    position: relative;
+    padding: 12px 0 24px;
+    opacity: 0;
+    animation: fadeInUp 0.5s forwards;
+  }
+
+  .timeline-item:nth-child(1)  { animation-delay: 0.0s; }
+  .timeline-item:nth-child(2)  { animation-delay: 0.3s; }
+  .timeline-item:nth-child(3)  { animation-delay: 0.6s; }
+  .timeline-item:nth-child(4)  { animation-delay: 0.9s; }
+  .timeline-item:nth-child(5)  { animation-delay: 1.2s; }
+  .timeline-item:nth-child(6)  { animation-delay: 1.5s; }
+  .timeline-item:nth-child(7)  { animation-delay: 1.8s; }
+  .timeline-item:nth-child(8)  { animation-delay: 2.1s; }
+  .timeline-item:nth-child(9)  { animation-delay: 2.4s; }
+  .timeline-item:nth-child(10) { animation-delay: 2.7s; }
+
+  .timeline-dot {
+    position: absolute;
+    left: -30px;
+    top: 14px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #58a6ff;
+    background: #0f1117;
+    z-index: 2;
+  }
+
+  .timeline-dot.active {
+    background: #58a6ff;
+    box-shadow: 0 0 10px rgba(88,166,255,0.5);
+    animation: dotPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes dotPulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(88,166,255,0.3); }
+    50%      { box-shadow: 0 0 16px rgba(88,166,255,0.7); }
+  }
+
+  .timeline-content {
+    background: #1c2028;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 14px 18px;
+  }
+
+  .timeline-content .step-num {
+    font-size: 0.65rem;
+    color: #58a6ff;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .timeline-content .step-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 4px 0 2px;
+  }
+
+  .timeline-content .step-detail {
+    font-size: 0.78rem;
+    color: #8b949e;
+    line-height: 1.5;
+  }
+
+  .timeline-content code {
+    background: #0d1117;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #79c0ff;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* ── Data flow animation (big diagram) ── */
+  .big-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .big-flow .flow-row { gap: 0; }
+
+  /* ── Combine stream viz ── */
+  .stream-container {
+    background: #1a2332;
+    border: 1px solid #2d5a8e;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 20px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stream-label {
+    font-size: 0.7rem;
+    color: #58a6ff;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .stream-track {
+    height: 4px;
+    background: #21262d;
+    border-radius: 2px;
+    position: relative;
+    margin: 16px 0;
+    overflow: visible;
+  }
+
+  .stream-marble {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+  }
+
+  .marble-1 { left: 5%;  background: #58a6ff; animation: marblePulse 3s 0.0s ease-in-out infinite; }
+  .marble-2 { left: 20%; background: #58a6ff; animation: marblePulse 3s 0.3s ease-in-out infinite; }
+  .marble-3 { left: 35%; background: #bc8cff; animation: marblePulse 3s 0.6s ease-in-out infinite; }
+  .marble-4 { left: 55%; background: #7ee787; animation: marblePulse 3s 0.9s ease-in-out infinite; }
+  .marble-5 { left: 75%; background: #7ee787; animation: marblePulse 3s 1.2s ease-in-out infinite; }
+  .marble-6 { left: 90%; background: #e3b341; animation: marblePulse 3s 1.5s ease-in-out infinite; }
+
+  @keyframes marblePulse {
+    0%, 100% { transform: translateY(-50%) scale(1); opacity: 0.7; }
+    50%      { transform: translateY(-50%) scale(1.3); opacity: 1; }
+  }
+
+  .stream-label-inline {
+    font-size: 0.6rem;
+    color: #8b949e;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* operator chip */
+  .op-chip {
+    display: inline-block;
+    background: #21262d;
+    border: 1px solid #484f58;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.7rem;
+    color: #e3b341;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    margin: 8px 4px;
+  }
+
+  .stream-ops {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 8px 0;
+  }
+
+  .stream-ops .arrow-sm {
+    color: #484f58;
+    font-size: 0.8rem;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #21262d;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: #8b949e;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .flow-row { flex-direction: column; gap: 8px; }
+    .arrow { transform: rotate(90deg); min-width: 50px; }
+    .assembly-grid { grid-template-columns: 1fr 1fr; }
+    h1 { font-size: 1.5rem; }
+    .diagram { padding: 24px 16px; }
+  }
+
+  /* ── Replay button ── */
+  .replay-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #58a6ff;
+    padding: 10px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    z-index: 100;
+  }
+  .replay-btn:hover { background: #30363d; transform: translateY(-2px); }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>VIPER-Combine App Launch Flow</h1>
+  <p class="subtitle">What happens when the app starts &mdash; from @main to pixels on screen</p>
+
+  <!-- ═══════ PHASE 1: App Entry ═══════ -->
+  <div class="phase">
+    <div class="phase-label"><span class="num">1</span> App Entry Point</div>
+    <div class="phase-title">SwiftUI boots the app and creates the Coordinator</div>
+
+    <div class="diagram">
+      <div class="flow-row">
+        <div class="box box-orange">
+          @main<br>VIPERCoordinatorApp
+          <span class="label">SwiftUI App</span>
+        </div>
+
+        <div class="arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-head"></div>
+          <span class="arrow-text">creates @StateObject</span>
+        </div>
+
+        <div class="box box-purple">
+          AppState
+          <span class="label">ObservableObject</span>
+        </div>
+
+        <div class="arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-head"></div>
+          <span class="arrow-text">init()</span>
+        </div>
+
+        <div class="box box-blue">
+          UINavigationController
+          <span class="label">UIKit host</span>
+        </div>
+
+        <div class="arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-head"></div>
+          <span class="arrow-text">injected into</span>
+        </div>
+
+        <div class="box box-green">
+          AppCoordinator
+          <span class="label">Root Coordinator</span>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top: 20px;">
+        <div class="arrow-down" style="display:inline-flex;">
+          <div class="arrow-line-v"></div>
+          <div class="arrow-head-v"></div>
+          <span class="arrow-text-v"><code>.start()</code></span>
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="box box-green">
+          coordinator.start()
+          <span class="label">calls showListings()</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PHASE 2: Module Assembly ═══════ -->
+  <div class="phase">
+    <div class="phase-label"><span class="num">2</span> Module Assembly</div>
+    <div class="phase-title">ListingAssembly.build() creates all VIPER layers</div>
+
+    <div class="diagram">
+      <div style="text-align:center; margin-bottom: 20px;">
+        <div class="box box-pink">
+          ListingAssembly.build()
+          <span class="label">Factory method</span>
+        </div>
+      </div>
+
+      <div class="assembly-grid">
+        <div class="assembly-item box-green" style="background:#1a2b1f; border:1.5px solid #2ea043;">
+          ListingInteractor()
+          <span class="assembly-order">Step 1 &mdash; Business logic</span>
+        </div>
+        <div class="assembly-item box-purple" style="background:#221a33; border:1.5px solid #6e40aa;">
+          ListingRouter()
+          <span class="assembly-order">Step 2 &mdash; Navigation emitter</span>
+        </div>
+        <div class="assembly-item box-blue" style="background:#1a2332; border:1.5px solid #2d5a8e;">
+          ListingPresenter(interactor, router)
+          <span class="assembly-order">Step 3 &mdash; State manager</span>
+        </div>
+        <div class="assembly-item box-orange" style="background:#2b2215; border:1.5px solid #d29922;">
+          ListingListView(presenter)
+          <span class="assembly-order">Step 4 &mdash; SwiftUI view</span>
+        </div>
+        <div class="assembly-item box-gray" style="background:#1c2028; border:1.5px solid #484f58;">
+          UIHostingController(rootView)
+          <span class="assembly-order">Step 5 &mdash; UIKit bridge</span>
+        </div>
+        <div class="assembly-item box-pink" style="background:#2b1a22; border:1.5px solid #db61a2;">
+          Module(viewController, router)
+          <span class="assembly-order">Step 6 &mdash; Returned</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#7ee787;"></div> Interactor</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#bc8cff;"></div> Router</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#79c0ff;"></div> Presenter</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e3b341;"></div> View</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#8b949e;"></div> UIKit Bridge</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f778ba;"></div> Module Output</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PHASE 3: Coordinator Subscribes ═══════ -->
+  <div class="phase">
+    <div class="phase-label"><span class="num">3</span> Wiring Navigation</div>
+    <div class="phase-title">Coordinator subscribes to Router's Combine publisher</div>
+
+    <div class="diagram">
+      <div class="flow-row">
+        <div class="box box-green" style="min-width: 160px;">
+          AppCoordinator
+          <span class="label">subscribes via .sink</span>
+        </div>
+
+        <div class="packet-track" style="min-width: 120px;">
+          <div class="track">
+            <div class="packet packet-purple" style="animation-delay: 0s;"></div>
+            <div class="packet packet-purple" style="animation-delay: 1s;"></div>
+          </div>
+        </div>
+
+        <div class="box box-purple" style="min-width: 160px;">
+          router.navigationPublisher
+          <span class="label">PassthroughSubject</span>
+        </div>
+      </div>
+
+      <div class="stream-container" style="margin-top: 24px;">
+        <div class="stream-label">Navigation Event Stream (Combine)</div>
+        <div class="stream-track">
+          <div class="stream-marble marble-1"></div>
+          <div class="stream-marble marble-3" style="left:40%;"></div>
+          <div class="stream-marble marble-6" style="left:75%;"></div>
+        </div>
+        <div class="stream-label-inline">
+          <span>.showDetail(listing)</span>
+          <span>.showFilter</span>
+          <span>.showDetail(...)</span>
+        </div>
+
+        <div class="stream-ops">
+          <span class="op-chip">.receive(on: RunLoop.main)</span>
+          <span class="arrow-sm">&rarr;</span>
+          <span class="op-chip">.sink { event in ... }</span>
+          <span class="arrow-sm">&rarr;</span>
+          <span class="op-chip">.store(in: &amp;cancellables)</span>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top: 16px;">
+        <div class="flow-row">
+          <div class="box box-green">
+            navigationController
+            <span class="label">.setViewControllers()</span>
+          </div>
+          <div class="arrow">
+            <div class="arrow-line"></div>
+            <div class="arrow-head"></div>
+            <span class="arrow-text">pushes</span>
+          </div>
+          <div class="box box-gray">
+            UIHostingController
+            <span class="label">ListingListView inside</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PHASE 4: Data Loading ═══════ -->
+  <div class="phase">
+    <div class="phase-label"><span class="num">4</span> View Appears &amp; Data Loads</div>
+    <div class="phase-title">Reactive data flow through all VIPER layers</div>
+
+    <div class="diagram">
+      <div class="big-flow">
+
+        <!-- Row 1: View → Presenter -->
+        <div class="flow-row">
+          <div class="box box-orange" style="min-width:140px;">
+            ListingListView
+            <span class="label">.onAppear { }</span>
+          </div>
+          <div class="packet-track" style="min-width: 100px;">
+            <div class="track">
+              <div class="packet packet-orange"></div>
+            </div>
+          </div>
+          <div class="box box-blue" style="min-width:180px;">
+            ListingPresenter
+            <span class="label">presenter.onAppear()</span>
+          </div>
+        </div>
+
+        <!-- Vertical -->
+        <div class="arrow-down">
+          <div class="arrow-line-v"></div>
+          <div class="arrow-head-v"></div>
+          <span class="arrow-text-v"><code>viewState = .loading</code></span>
+        </div>
+
+        <!-- Row 2: Presenter → Interactor -->
+        <div class="flow-row">
+          <div class="box box-blue" style="min-width:180px;">
+            Presenter
+            <span class="label">Task { await ... }</span>
+          </div>
+          <div class="packet-track" style="min-width: 100px;">
+            <div class="track">
+              <div class="packet packet-blue"></div>
+            </div>
+          </div>
+          <div class="box box-green" style="min-width:180px;">
+            ListingInteractor
+            <span class="label">fetchListings() async</span>
+          </div>
+        </div>
+
+        <!-- Vertical -->
+        <div class="arrow-down">
+          <div class="arrow-line-v"></div>
+          <div class="arrow-head-v"></div>
+          <span class="arrow-text-v"><code>~600ms network delay</code></span>
+        </div>
+
+        <!-- Row 3: Interactor returns -->
+        <div class="flow-row">
+          <div class="box box-green" style="min-width:180px;">
+            Interactor
+            <span class="label">returns [Listing]</span>
+          </div>
+          <div class="packet-track" style="min-width: 100px;">
+            <div class="track">
+              <div class="packet packet-green"></div>
+            </div>
+          </div>
+          <div class="box box-blue" style="min-width:180px;">
+            Presenter
+            <span class="label">viewState = .loaded(listings)</span>
+          </div>
+        </div>
+
+        <!-- Vertical -->
+        <div class="arrow-down">
+          <div class="arrow-line-v"></div>
+          <div class="arrow-head-v"></div>
+          <span class="arrow-text-v"><code>@Published triggers</code></span>
+        </div>
+
+        <!-- Row 4: State update → View redraws -->
+        <div class="flow-row">
+          <div class="box box-blue" style="min-width:180px;">
+            @Published viewState
+            <span class="label">Combine publisher</span>
+          </div>
+          <div class="packet-track" style="min-width: 100px;">
+            <div class="track">
+              <div class="packet packet-purple"></div>
+            </div>
+          </div>
+          <div class="box box-orange" style="min-width:180px;">
+            ListingListView
+            <span class="label">@ObservedObject redraws</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Search stream -->
+      <div class="stream-container" style="margin-top: 28px;">
+        <div class="stream-label">Search Query Combine Pipeline</div>
+
+        <div class="stream-track">
+          <div class="stream-marble marble-1" style="left:2%;"></div>
+          <div class="stream-marble marble-2" style="left:8%;"></div>
+          <div class="stream-marble marble-1" style="left:14%;"></div>
+          <div class="stream-marble marble-2" style="left:20%;"></div>
+          <div class="stream-marble marble-1" style="left:26%;"></div>
+        </div>
+        <div class="stream-label-inline" style="margin-bottom: 8px;">
+          <span>"c" "co" "coz" "cozy" "cozy " &mdash; raw keystrokes</span>
+        </div>
+
+        <div class="stream-ops">
+          <span class="op-chip">$searchQuery</span>
+          <span class="arrow-sm">&rarr;</span>
+          <span class="op-chip">.debounce(0.3s)</span>
+          <span class="arrow-sm">&rarr;</span>
+          <span class="op-chip">.removeDuplicates()</span>
+          <span class="arrow-sm">&rarr;</span>
+          <span class="op-chip">.sink { query }</span>
+        </div>
+
+        <div class="stream-track" style="margin-top: 4px;">
+          <div class="stream-marble marble-4" style="left: 50%;"></div>
+        </div>
+        <div class="stream-label-inline">
+          <span></span>
+          <span>"cozy" &mdash; single debounced value &rarr; interactor.searchListings()</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PHASE 5: Complete Timeline ═══════ -->
+  <div class="phase">
+    <div class="phase-label"><span class="num">5</span> Complete Sequence</div>
+    <div class="phase-title">Step-by-step timeline from cold launch to rendered UI</div>
+
+    <div class="diagram">
+      <div class="timeline">
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content">
+            <div class="step-num">STEP 1</div>
+            <div class="step-title">@main Entry</div>
+            <div class="step-detail"><code>VIPERCoordinatorApp</code> initializes, creates <code>@StateObject AppState</code></div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content">
+            <div class="step-num">STEP 2</div>
+            <div class="step-title">AppState Creates UIKit Host</div>
+            <div class="step-detail"><code>UINavigationController</code> created &rarr; injected into <code>AppCoordinator(navigationController:)</code></div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content">
+            <div class="step-num">STEP 3</div>
+            <div class="step-title">Coordinator Starts</div>
+            <div class="step-detail"><code>coordinator.start()</code> &rarr; <code>showListings()</code></div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content">
+            <div class="step-num">STEP 4</div>
+            <div class="step-title">Module Assembly</div>
+            <div class="step-detail"><code>ListingAssembly.build()</code> creates Interactor &rarr; Router &rarr; Presenter &rarr; View &rarr; UIHostingController</div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content">
+            <div class="step-num">STEP 5</div>
+            <div class="step-title">Navigation Subscription</div>
+            <div class="step-detail">Coordinator subscribes to <code>router.navigationPublisher</code> via <code>.receive(on: RunLoop.main).sink { }</code></div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content">
+            <div class="step-num">STEP 6</div>
+            <div class="step-title">View Controller Pushed</div>
+            <div class="step-detail"><code>navigationController.setViewControllers([hostingVC], animated: false)</code></div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content">
+            <div class="step-num">STEP 7</div>
+            <div class="step-title">SwiftUI View Appears</div>
+            <div class="step-detail"><code>.onAppear</code> fires &rarr; calls <code>presenter.onAppear()</code></div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content">
+            <div class="step-num">STEP 8</div>
+            <div class="step-title">Loading State</div>
+            <div class="step-detail">Presenter sets <code>viewState = .loading</code> &rarr; View shows spinner</div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content">
+            <div class="step-num">STEP 9</div>
+            <div class="step-title">Async Fetch</div>
+            <div class="step-detail"><code>Task { listings = try await interactor.fetchListings() }</code> &mdash; simulated 600ms delay</div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="timeline-content" style="border-color: #2ea043;">
+            <div class="step-num" style="color: #7ee787;">STEP 10</div>
+            <div class="step-title" style="color: #7ee787;">Listings Rendered</div>
+            <div class="step-detail">Presenter sets <code>viewState = .loaded(listings)</code> &rarr; <code>@Published</code> triggers SwiftUI redraw &rarr; 6 listings on screen</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<button class="replay-btn" onclick="location.reload()">&#8635; Replay animations</button>
+
+</body>
+</html>
